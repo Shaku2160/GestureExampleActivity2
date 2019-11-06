@@ -79,8 +79,10 @@ public class TouchExample extends View {
 
         float taille_image = 0.0f;
 
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inSampleSize = 8;
         context_app = context;
-        listeImg = getCameraImages(getContext()).subList(0,10);
+        listeImg = getCameraImages(getContext());
         Point point = new Point();
         WindowManager display = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         display.getDefaultDisplay().getSize(point);
@@ -93,7 +95,7 @@ public class TouchExample extends View {
         int pos_left = 0;
         int index_ligne = 0;
         for (String pic : listeImg) {
-            Bitmap b = BitmapFactory.decodeFile(pic);
+            Bitmap b = BitmapFactory.decodeFile(pic,options);
             BitmapDrawable image = new BitmapDrawable(getResources(), b);
 
             if(pos_left > largeur_ecran){
@@ -116,7 +118,6 @@ public class TouchExample extends View {
         for(BitmapDrawable image : images){
             image.draw(canvas);
         }
-        //canvas.drawBitmap(image.getBitmap(), 0, 0, mPaint);
 
     }
 
@@ -172,12 +173,10 @@ public class TouchExample extends View {
             int pos_left = 0;
             int index_ligne = 0;
             float taille_image = 0.0f;
-            int pos_top = 0;
 
 
             rectedObject = images.get(0).getBounds();
             taille_image = (int)(rectedObject.right*mScale);
-            pos_top = rectedObject.top;
 
             if(taille_image > max_taille_image){
                 taille_image = max_taille_image;
