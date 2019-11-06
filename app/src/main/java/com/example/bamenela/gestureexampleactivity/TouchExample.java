@@ -2,19 +2,16 @@ package com.example.bamenela.gestureexampleactivity;
 
 
 import android.content.Context;
-import android.content.res.Resources;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
 import android.graphics.Point;
+import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Log;
-import android.view.Display;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
@@ -30,20 +27,15 @@ public class TouchExample extends View {
     private float mScale = 1f;
     private GestureDetector mGestureDetector;
     private ScaleGestureDetector mScaleGestureDetector;
+    private static final String DEBUG_TAG = "Gestures";
 
-    private Pointer[] mPointers = new Pointer[MAX_POINTERS];
-    private Paint mPaint;
-    private float mFontSize;
     private ArrayList<BitmapDrawable> images = new ArrayList<BitmapDrawable>();
-    private int nb_image;
     List<String> listeImg;
-
-    class Pointer {
-        float x = 0;
-        float y = 0;
-        int index = -1;
-        int id = -1;
-    }
+    private Context context_app;
+    private int nb_image_ligne = 0;
+    private int largeur_ecran;
+    private int min_taille_image;
+    private int max_taille_image;
 
     public static final String CAMERA_IMAGE_BUCKET_NAME =
             Environment.getExternalStorageDirectory().toString()
@@ -85,33 +77,35 @@ public class TouchExample extends View {
     public TouchExample(Context context) {
         super(context);
 
-        listeImg = getCameraImages(getContext()).subList(0, 30);
-        Point point = new Point();
+        float taille_image = 0.0f;
 
+        context_app = context;
+        listeImg = getCameraImages(getContext()).subList(0,10);
+        Point point = new Point();
         WindowManager display = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         display.getDefaultDisplay().getSize(point);
-        Resources res = getContext().getResources();
+        nb_image_ligne = 7;
+        taille_image = point.x/nb_image_ligne;
+        min_taille_image = (int)taille_image;
+        max_taille_image = point.x;
+        largeur_ecran = point.x;
 
-        int i = 0;
+        int pos_left = 0;
+        int index_ligne = 0;
         for (String pic : listeImg) {
-            Log.d("TEST >>>>>>>>>>>>>>>>> ",pic);
-            Log.d("Taille >>>>>>>>>>>>>>> ",point.x + "");
             Bitmap b = BitmapFactory.decodeFile(pic);
             BitmapDrawable image = new BitmapDrawable(getResources(), b);
 
-            image.setBounds(i,0, 1000+i,1000);
+            if(pos_left > largeur_ecran){
+                pos_left=0;
+                index_ligne++;
+            }
+            image.setBounds(pos_left,(int)(index_ligne*taille_image), (int) (pos_left+ taille_image),(int) (taille_image+(index_ligne*taille_image)));
+            pos_left+= taille_image;
 
             images.add(image);
-            // canvas.drawBitmap(b, i, 0, mPaint);
-            i+=250;
         }
-
-        mFontSize = 16 * getResources().getDisplayMetrics().density;
-        mPaint = new Paint();
-        mPaint.setColor(Color.BLACK);
-        mPaint.setTextSize(mFontSize);
-
-        mGestureDetector = new GestureDetector(context, new ZoomGesture());
+        mGestureDetector = new GestureDetector(context, new Gesture());
         mScaleGestureDetector = new ScaleGestureDetector(context, new ScaleGesture());
     }
 
@@ -138,14 +132,34 @@ public class TouchExample extends View {
         return true;
     }
 
-    public class ZoomGesture extends GestureDetector.SimpleOnGestureListener {
+    public class Gesture extends GestureDetector.SimpleOnGestureListener {
         private boolean normal = true;
 
         @Override
-        public boolean onDoubleTap(MotionEvent e) {
-            mScale = normal ? 3f : 1f;
-            mPaint.setTextSize(mScale*mFontSize);
-            normal = !normal;
+        public boolean onScroll (MotionEvent e1,
+                                 MotionEvent e2,
+                                 float distanceX,
+                                 float distanceY)
+        {
+            float top = 0.0f;
+            float bottom = 0.0f;
+
+
+            Log.d(DEBUG_TAG, "onScroll: " + "x: " + distanceX + "   y: " + distanceY);
+//            if(images.get(0).getBounds().top >= 0)
+//            {
+                for (BitmapDrawable index : images) {
+                    Rect rectedObject = index.getBounds();
+                    top = rectedObject.top - distanceY;
+                    bottom = rectedObject.bottom - distanceY;
+//                    if(top >= 0) {
+                        index.setBounds(rectedObject.left, (int) top, rectedObject.right, (int) bottom);
+//                    }
+//                    else{
+//                        index.setBounds(rectedObject.left, 0, rectedObject.right, (int) rectedObject.bottom);
+//                    }
+                }
+//            }
             invalidate();
             return true;
         }
@@ -154,14 +168,37 @@ public class TouchExample extends View {
     public class ScaleGesture extends ScaleGestureDetector.SimpleOnScaleGestureListener {
         @Override
         public boolean onScale(ScaleGestureDetector detector) {
-            mScale *= detector.getScaleFactor();
+            Rect rectedObject;
+            int pos_left = 0;
+            int index_ligne = 0;
+            float taille_image = 0.0f;
+            int pos_top = 0;
 
-            int i = 0;
+
+            rectedObject = images.get(0).getBounds();
+            taille_image = (int)(rectedObject.right*mScale);
+            pos_top = rectedObject.top;
+
+            if(taille_image > max_taille_image){
+                taille_image = max_taille_image;
+                mScale = 1f;
+            }
+            else if(taille_image < min_taille_image)
+            {
+                taille_image = min_taille_image;
+                mScale = 1f;
+            }
+            else{
+                mScale *= detector.getScaleFactor();
+            }
             for(BitmapDrawable image : images){
-                float width = image.getBitmap().getWidth() * mScale;
-                float height = image.getBitmap().getHeight() * mScale;
-                image.setBounds(i,0,(int) width+i,(int) height);
-                i +=250;
+
+                if((pos_left+taille_image) > largeur_ecran){
+                    pos_left=0;
+                    index_ligne++;
+                }
+                image.setBounds(pos_left,(int)(index_ligne*taille_image)+rectedObject.top, (int) (pos_left+ taille_image),(int) (taille_image+(index_ligne*taille_image))+rectedObject.top);
+                pos_left+= taille_image;
             }
 
             invalidate();
