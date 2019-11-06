@@ -173,25 +173,25 @@ public class TouchExample extends View {
                                  float distanceX,
                                  float distanceY)
         {
-            float top = 0.0f;
-            float bottom = 0.0f;
+            int top = 0;
+            int bottom = 0;
+            int scroll = (int)(distanceY);
+            Rect rectedObject;
 
+            //Récupération du top de la première image
+            rectedObject = images.get(0).getBounds();
+            top = rectedObject.top - scroll;
 
-            Log.d(DEBUG_TAG, "onScroll: " + "x: " + distanceX + "   y: " + distanceY);
-//            if(images.get(0).getBounds().top >= 0)
-//            {
+            //On ne scroll pas si la première image se retrouve en une position > 0
+            if(top <= 0) {
                 for (BitmapDrawable index : images) {
-                    Rect rectedObject = index.getBounds();
-                    top = rectedObject.top - distanceY;
-                    bottom = rectedObject.bottom - distanceY;
-//                    if(top >= 0) {
+                    rectedObject = index.getBounds();
+                    top = rectedObject.top - scroll;
+                    bottom = rectedObject.bottom - scroll;
+                    //Redéfinir l'affichage
                     index.setBounds(rectedObject.left, (int) top, rectedObject.right, (int) bottom);
-//                    }
-//                    else{
-//                        index.setBounds(rectedObject.left, 0, rectedObject.right, (int) rectedObject.bottom);
-//                    }
                 }
-//            }
+            }
             invalidate();
             return true;
         }
