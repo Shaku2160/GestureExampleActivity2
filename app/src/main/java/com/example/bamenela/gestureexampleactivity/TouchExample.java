@@ -23,7 +23,8 @@ import java.util.List;
 
 
 public class TouchExample extends View {
-    private static final int MAX_POINTERS = 5;
+
+    // Init variable
     private float mScale = 1f;
     private GestureDetector mGestureDetector;
     private ScaleGestureDetector mScaleGestureDetector;
@@ -37,6 +38,7 @@ public class TouchExample extends View {
     private int min_taille_image;
     private int max_taille_image;
 
+    // récupère le chemin repertoire photo
     public static final String CAMERA_IMAGE_BUCKET_NAME =
             Environment.getExternalStorageDirectory().toString()
                     + "/DCIM/Camera";
@@ -53,6 +55,7 @@ public class TouchExample extends View {
 
 
     // récupère la liste complète des images sur le répertoire DCIM
+    // et retourne une liste des chemins de chaque images
     public static List<String> getCameraImages(Context context) {
         final String[] projection = { MediaStore.Images.Media.DATA };
         final String selection = MediaStore.Images.Media.BUCKET_ID + " = ?";
@@ -74,18 +77,28 @@ public class TouchExample extends View {
         return result;
     }
 
+    // à l'initialisation de la view
     public TouchExample(Context context) {
         super(context);
 
         float taille_image = 0.0f;
 
+        // set taux de compression des images à afficher
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inSampleSize = 8;
+
+        // récupération du contexte
         context_app = context;
+
+        // récupération de la liste des chemins de chaque image
         listeImg = getCameraImages(getContext());
+
+        // initialisation du windowManager pour récupérer la taille du device
         Point point = new Point();
         WindowManager display = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         display.getDefaultDisplay().getSize(point);
+
+        // définition du nombre d'image par ligne
         nb_image_ligne = 7;
         taille_image = point.x/nb_image_ligne;
         min_taille_image = (int)taille_image;
@@ -94,27 +107,44 @@ public class TouchExample extends View {
 
         int pos_left = 0;
         int index_ligne = 0;
+
+        // pour chaque chemin d'images
         for (String pic : listeImg) {
+
+            // transforme le fichier en bitmap avec un certains taux de compression
             Bitmap b = BitmapFactory.decodeFile(pic,options);
+
+            // transforme la bitmap en bitmap drawable pour pouvoir avoir plus de facilité
+            // à la manipulation de celle-ci
             BitmapDrawable image = new BitmapDrawable(getResources(), b);
 
+            // si la position de l'image à afficher est supérieur à la taille de l'écran alors on
+            // replace l'image tout à gauche et on saute une ligne
             if(pos_left > largeur_ecran){
                 pos_left=0;
                 index_ligne++;
             }
+
+            // placement de l'image à afficher
             image.setBounds(pos_left,(int)(index_ligne*taille_image), (int) (pos_left+ taille_image),(int) (taille_image+(index_ligne*taille_image)));
+
+            // la position gauche de la prochaine image est incrémenté
             pos_left+= taille_image;
 
+            // ajout de l'image à afficher dans la liste d'images
             images.add(image);
         }
+        // initialisation des detecteur de mouvement
         mGestureDetector = new GestureDetector(context, new Gesture());
         mScaleGestureDetector = new ScaleGestureDetector(context, new ScaleGesture());
     }
 
+    // fonction d'affichage de l'image dans le canvas
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
+        // pour chaque image présente dans la liste, l'image est dessiné
         for(BitmapDrawable image : images){
             image.draw(canvas);
         }
@@ -133,8 +163,9 @@ public class TouchExample extends View {
         return true;
     }
 
+    // utilisation de la classe simpleOnGestureListener pour executer du code lors du scroll
     public class Gesture extends GestureDetector.SimpleOnGestureListener {
-        private boolean normal = true;
+        //private boolean normal = true;
 
         @Override
         public boolean onScroll (MotionEvent e1,
@@ -154,7 +185,7 @@ public class TouchExample extends View {
                     top = rectedObject.top - distanceY;
                     bottom = rectedObject.bottom - distanceY;
 //                    if(top >= 0) {
-                        index.setBounds(rectedObject.left, (int) top, rectedObject.right, (int) bottom);
+                    index.setBounds(rectedObject.left, (int) top, rectedObject.right, (int) bottom);
 //                    }
 //                    else{
 //                        index.setBounds(rectedObject.left, 0, rectedObject.right, (int) rectedObject.bottom);
@@ -167,18 +198,27 @@ public class TouchExample extends View {
     }
 
     public class ScaleGesture extends ScaleGestureDetector.SimpleOnScaleGestureListener {
+
+        // rédéfinition de la fonction onScale (lors du zoom)
         @Override
         public boolean onScale(ScaleGestureDetector detector) {
+
+            // initialisation des variables
             Rect rectedObject;
             int pos_left = 0;
             int index_ligne = 0;
             float taille_image = 0.0f;
 
 
+            // récupération des images affiché et redimensionnement en fonction du
+            // taux de zoom de l'utilisateur
             rectedObject = images.get(0).getBounds();
             taille_image = (int)(rectedObject.right*mScale);
 
+            // si la taille de l'image est plus grande que la limite défini alors la taille
+            // ne s'incrémente plus et on reset le facteur d'agrandissement
             if(taille_image > max_taille_image){
+
                 taille_image = max_taille_image;
                 mScale = 1f;
             }
@@ -190,13 +230,18 @@ public class TouchExample extends View {
             else{
                 mScale *= detector.getScaleFactor();
             }
+
+            // pour chaque images
             for(BitmapDrawable image : images){
 
+                // Si la prochaine image à afficher dépasse la largeur de l'écran alors on saute une ligne et on affiche l'image tout à droite
                 if((pos_left+taille_image) > largeur_ecran){
                     pos_left=0;
                     index_ligne++;
                 }
+                // placement de l'image
                 image.setBounds(pos_left,(int)(index_ligne*taille_image)+rectedObject.top, (int) (pos_left+ taille_image),(int) (taille_image+(index_ligne*taille_image))+rectedObject.top);
+                // incrémentation de l'index gauche, pour la prochaine image
                 pos_left+= taille_image;
             }
 
